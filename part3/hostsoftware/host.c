@@ -91,9 +91,16 @@ int main(int argc, char **argv) {
    * Note, with pipe, on success, zero is returned
    */
   // TODO: init signal_pipe with error checking
-  
+	if(pipe(signal_pipe) == -1) {
+		perror("pipe");
+		return -1;
+	}
+
   // TODO: init data_pipe with error checking
-  
+	if(pipe(data_pipe) == -1) {
+		perror("pipe");
+		return -1;
+	} 
 
   printf("Initializing Host-side Processes\n");
   sleep(1);   //let arduino set up
@@ -102,6 +109,20 @@ int main(int argc, char **argv) {
    * and main_loop_data in the parent.
    */
   // TODO fork and call the correct main_loop per process
+
+	if((pid = fork()) == -1) {
+		perror("fork");
+		exit(1);
+	}
+
+	if(pid == 0) {
+		// CHILD
+		main_loop_cli(record, hists);
+	}
+	else {
+		// PARENT
+		main_loop_data(serial_fd, record, hists);
+	}
 
   /*
    * cleanup resources
