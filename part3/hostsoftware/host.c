@@ -118,6 +118,7 @@ int main(int argc, char **argv) {
 	if(pid == 0) {
 		// CHILD
 		main_loop_cli(record, hists);
+		exit(0);
 	}
 	else {
 		// PARENT
@@ -148,6 +149,10 @@ done:
 void main_loop_cli(char *record, char **hists) {
   /* We only want to SEND signals and READ data */
   // TODO: close the correct end of the pipes
+	close(signal_pipe[0]);
+	close(data_pipe[1]);
+
+	sleep(5);
 
   char* buf;
   size_t buffer_size = 10 * sizeof(char);
@@ -320,6 +325,10 @@ void main_loop_data(int tty_fd, char *record, char **hists) {
 
   /* We only want to READ signals and SEND data */
   // TODO: close the correct end of the pipes
+	close(signal_pipe[1]);
+	close(data_pipe[0]);
+
+	sleep(5);
 
   printf("Beginning Sensor Reading\n");
   while (num_readings < 3 * 24) {
