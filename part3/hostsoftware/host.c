@@ -193,19 +193,19 @@ void main_loop_cli(char *record, char **hists) {
 	}    
     // TODO else if buf matches "hist t", print temp  histogram
 	else if (matches(&buf, "hist t")) {    
-
+		print_hist(hists[0]);
 	}
     // TODO else if buf matches "hist p", print press  histogram
     else if (matches(&buf, "hist p")) {
-
+		print_hist(hists[1]);
 	}
     // TODO else if buf matches "hist t", print hum  histogram
     else if (matches(&buf, "hist t")) {
-
+		print_hist(hists[2]);
 	}
     // TODO else if buf matches "record", prints  the record so far
     else if (matches(&buf, "record")) {
-
+		printf("PRINT RECORD HERE\n")
 	}
     // This is for printing the menu
     else if (matches(buf, "help") ) 
@@ -262,11 +262,13 @@ int read_cmd(enum message *cmd, char *extra) {
 
   // TODO: init the set of file descriptors 
   //  (only read end of signal_pipe) 
- 
+	fd_set set;
+	FD_ZERO(&set);
+	FD_SET(signal_pipe[0], &set); 
 
   // TODO: Use select to check if there are new bytes 
   //   to be read from signal_pipe
-  if (/* FILL THIS  */) { 
+  if (select(FD_SETSIZE, &set, NULL, NULL, &tv)) { 
     // Default return parameters
     *cmd = 0;
     *extra = 0;
@@ -278,19 +280,29 @@ int read_cmd(enum message *cmd, char *extra) {
 
       // TODO if buf matches "resume" set cmd to correct value
       // (use enum message in arduino.h) 
+    	if (matches(buf, "resume")) {
 
+		}
       // TODO else if buf matches "pause" set cmd to correct valuet
+		else if (matches(buf, "pause")) {
 
+		}
       // TODO else if buf matches "exit" set cmd to correct value
-      
+      	else if (matches(buf, "exit")) {
+
+		}
       // TODO else if buf matches "blink" a space and a number,
       //    set cmd to correct value and extra to the value
       //  Tip: you can use sscanf buf to find "blink %d" 
       //    to scan the %d into an integer, which you
       //    can convert to a char
+		else if (matches(buf, "blink %d")) {
 
+		}
       // TODO else if buf matches "request" set cmd to correct value
+		else if (matches(buf, "request")) {
 
+		}
 
       // reset buffer
       if (cmd != 0) {
