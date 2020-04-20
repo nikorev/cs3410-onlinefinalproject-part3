@@ -281,15 +281,16 @@ int read_cmd(enum message *cmd, char *extra) {
       // TODO if buf matches "resume" set cmd to correct value
       // (use enum message in arduino.h) 
     	if (matches(buf, "resume")) {
-
+			*cmd = 4;
 		}
       // TODO else if buf matches "pause" set cmd to correct valuet
 		else if (matches(buf, "pause")) {
-
+			*cmd = 3;
 		}
       // TODO else if buf matches "exit" set cmd to correct value
       	else if (matches(buf, "exit")) {
-
+			// its 5, arduinocomm.h
+			*cmd = 5;
 		}
       // TODO else if buf matches "blink" a space and a number,
       //    set cmd to correct value and extra to the value
@@ -297,11 +298,14 @@ int read_cmd(enum message *cmd, char *extra) {
       //    to scan the %d into an integer, which you
       //    can convert to a char
 		else if (matches(buf, "blink %d")) {
-
+			*cmd = 1;
+			int blinkRate;
+			sscanf("%s %d", NULL, &blinkRate);
+			*extra = blinkRate;
 		}
       // TODO else if buf matches "request" set cmd to correct value
 		else if (matches(buf, "request")) {
-
+			*cmd = 2;
 		}
 
       // reset buffer
@@ -375,7 +379,9 @@ void main_loop_data(int tty_fd, char *record, char **hists) {
     //       to Arduino and flip is_paused flag.
     //     TODO: if msg is Blink: send a 2-char array to Arduino
     //       with the msg and the extra
-
+	if(read_cmd(msg, extra)) { // we have a command
+		
+	}
 
     /*
      * Check if we should request a reading from the user
