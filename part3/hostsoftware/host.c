@@ -171,39 +171,40 @@ void main_loop_cli(char *record, char **hists) {
 	printf("USER INPUT: %s\n", buf);
     
     // TODO if buf matches "resume" send "resume" to parent 
-    if (strcmp(buf, "resume\n") == 0){
-
+    if (matches(&buf, "resume")){
+		write(signal_pipe[1], "resume", strlen("resume") + 1);
     }
     // TODO else if buf matches "pause" send "pause" to parent
-    else if (strcmp(buf, "pause\n") == 0){
-
+    else if (matches(&buf, "pause")){
+		write(signal_pipe[1], "pause", strlen("pause") + 1);
     }
     // TODO else if buf matches "exit" send "exit" to parent
-	else if (strcmp(buf, "exit\n") == 0) {
-
+	else if (matches(&buf, "exit")) {
+		write(signal_pipe[1], "exit", strlen("exit") + 1);
 	}    
     // TODO else if buf matches "blink" send buf to parent
-		// blink is at the end, using same code from part 1
-		// ITS WITHIN THE ELSE STATEMENT
-    // TODO else if buf matches "request" send "request" to parent
+    else if (matches(&buf, "blink")) {
+		write(signal_pipe[1], &buf, &buffer_size);
+	}
+	// TODO else if buf matches "request" send "request" to parent
     //   Then: read 16 chars from data pipe and print to stdout
-	else if (strcmp(buf, "request\n") == 0) {
-
+	else if (matches(&buf, "request")) {
+		write(signal_pipe[1], "request", strlen("request") + 1);
 	}    
     // TODO else if buf matches "hist t", print temp  histogram
-	else if (strcmp(buf, "hist t\n") == 0) {    
+	else if (matches(&buf, "hist t")) {    
 
 	}
     // TODO else if buf matches "hist p", print press  histogram
-    else if (strcmp(buf, "hist p\n") == 0) {
+    else if (matches(&buf, "hist p")) {
 
 	}
     // TODO else if buf matches "hist t", print hum  histogram
-    else if (strcmp(buf, "hist t\n") == 0) {
+    else if (matches(&buf, "hist t")) {
 
 	}
     // TODO else if buf matches "record", prints  the record so far
-    else if (strcmp(buf, "record\n") == 0) {
+    else if (matches(&buf, "record")) {
 
 	}
     // This is for printing the menu
@@ -213,7 +214,7 @@ void main_loop_cli(char *record, char **hists) {
     }
     else 
     {
-      print_help = 1;
+		print_help = 1;
     }
 
     if (print_help){
