@@ -380,7 +380,21 @@ void main_loop_data(int tty_fd, char *record, char **hists) {
     //     TODO: if msg is Blink: send a 2-char array to Arduino
     //       with the msg and the extra
 	if(read_cmd(msg, extra)) { // we have a command
-		
+		if(msg == 5) // exit
+			return;
+		else if(msg == 3) { // pause
+			send_msg(msg, 1, tty_fd);
+			is_paused = !is_paused;
+		}
+		else if(msg == 4) { // resume
+			send_msg(msg, 1, tty_fd);
+			is_paused = !is_paused;
+		}
+		else if(msg == 1) { // blink
+			to_send[0] = msg;
+			to_send[1] = extra;
+			send_msg(to_send, 2, tty_fd);
+		}
 	}
 
     /*
@@ -393,6 +407,7 @@ void main_loop_data(int tty_fd, char *record, char **hists) {
       next_time = t + 1;
 
       // TODO: send a 1 (request command) to the Arduino
+		send_msg("1", 1, tty_fd);
 
       /*
        * Format of reply as follows
@@ -456,6 +471,12 @@ void main_loop_data(int tty_fd, char *record, char **hists) {
       /*Now reply to client if the message was REQUEST*/
       // TODO: if msg was REQUEST, write the reply to the data_pipe
       //    and reset msg to 0
+
+		if(msg == 2) {
+			write(data_pipe[1], reply, 17);
+			msg = 0;
+		}
+
     }
   }
   printf("DONE with parent LOOP\n");
