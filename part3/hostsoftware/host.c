@@ -163,30 +163,49 @@ void main_loop_cli(char *record, char **hists) {
   while (1) {
     printf("->");
     // TODO: Get the user command into buf
+	if (getline(&buf, &buffer_size, stdin) < 0) {
+		printf("ERROR: Could not read line\n");
+		return 0;
+	}
+
+	printf("USER INPUT: %s\n", buf);
     
     // TODO if buf matches "resume" send "resume" to parent 
-    if (/* */){
+    if (strcmp(buf, "resume\n") == 0){
 
     }
     // TODO else if buf matches "pause" send "pause" to parent
-    else if (/* */){
+    else if (strcmp(buf, "pause\n") == 0){
 
     }
     // TODO else if buf matches "exit" send "exit" to parent
-    
+	else if (strcmp(buf, "exit\n") == 0) {
+
+	}    
     // TODO else if buf matches "blink" send buf to parent
-    
+		// blink is at the end, using same code from part 1
+		// ITS WITHIN THE ELSE STATEMENT
     // TODO else if buf matches "request" send "request" to parent
     //   Then: read 16 chars from data pipe and print to stdout
-    
+	else if (strcmp(buf, "request\n") == 0) {
+
+	}    
     // TODO else if buf matches "hist t", print temp  histogram
-    
+	else if (strcmp(buf, "hist t\n") == 0) {    
+
+	}
     // TODO else if buf matches "hist p", print press  histogram
-    
+    else if (strcmp(buf, "hist p\n") == 0) {
+
+	}
     // TODO else if buf matches "hist t", print hum  histogram
-    
+    else if (strcmp(buf, "hist t\n") == 0) {
+
+	}
     // TODO else if buf matches "record", prints  the record so far
-    
+    else if (strcmp(buf, "record\n") == 0) {
+
+	}
     // This is for printing the menu
     else if (matches(buf, "help") ) 
     {  
