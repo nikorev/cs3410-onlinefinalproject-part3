@@ -165,47 +165,56 @@ void main_loop_cli(char *record, char **hists) {
     // TODO: Get the user command into buf
 	if (getline(&buf, &buffer_size, stdin) < 0) {
 		printf("ERROR: Could not read line\n");
-		return 0;
+		return;
 	}
-
-	printf("USER INPUT: %s\n", buf);
-    
+ 
     // TODO if buf matches "resume" send "resume" to parent 
-    if (matches(&buf, "resume")){
+    if (matches(buf, "resume")){
+		printf("[main_loop_cli] writing to signal_pipe: resume\n");
 		write(signal_pipe[1], "resume", strlen("resume") + 1);
     }
     // TODO else if buf matches "pause" send "pause" to parent
-    else if (matches(&buf, "pause")){
+    else if (matches(buf, "pause")){
+		printf("[main_loop_cli] writing to signal_pipe: pause\n");
 		write(signal_pipe[1], "pause", strlen("pause") + 1);
     }
     // TODO else if buf matches "exit" send "exit" to parent
-	else if (matches(&buf, "exit")) {
+	else if (matches(buf, "exit")) {
+		printf("[main_loop_cli] writing to signal_pipe: exit\n");
 		write(signal_pipe[1], "exit", strlen("exit") + 1);
 	}    
     // TODO else if buf matches "blink" send buf to parent
-    else if (matches(&buf, "blink")) {
-		write(signal_pipe[1], &buf, &buffer_size);
+    else if (matches(buf, "blink")) {
+		printf("[main_loop_cli] writing to signal_pipe: blink\n");
+		write(signal_pipe[1], &buf, buffer_size);
 	}
 	// TODO else if buf matches "request" send "request" to parent
     //   Then: read 16 chars from data pipe and print to stdout
-	else if (matches(&buf, "request")) {
+	else if (matches(buf, "request")) {
+		printf("[main_loop_cli] writing to signal_pipe: request\n");
 		write(signal_pipe[1], "request", strlen("request") + 1);
+		char recordBuf[17];
+		read(data_pipe[0], recordBuf, 16);
+		printf("%s\n", recordBuf);
 	}    
     // TODO else if buf matches "hist t", print temp  histogram
-	else if (matches(&buf, "hist t")) {    
+	else if (matches(buf, "hist t")) {    
 		print_hist(hists[0]);
 	}
     // TODO else if buf matches "hist p", print press  histogram
-    else if (matches(&buf, "hist p")) {
+    else if (matches(buf, "hist p")) {
 		print_hist(hists[1]);
 	}
     // TODO else if buf matches "hist t", print hum  histogram
-    else if (matches(&buf, "hist t")) {
+    else if (matches(buf, "hist t")) {
 		print_hist(hists[2]);
 	}
     // TODO else if buf matches "record", prints  the record so far
-    else if (matches(&buf, "record")) {
-		printf("PRINT RECORD HERE\n")
+    else if (matches(buf, "record")) {
+		if(record == NULL)
+			printf("[main_loop_cli] record is currently empty\n");
+		else
+			printf("%s\n", record);
 	}
     // This is for printing the menu
     else if (matches(buf, "help") ) 
@@ -262,13 +271,12 @@ int read_cmd(enum message *cmd, char *extra) {
 
   // TODO: init the set of file descriptors 
   //  (only read end of signal_pipe) 
-	fd_set set;
-	FD_ZERO(&set);
-	FD_SET(signal_pipe[0], &set); 
+	FD_ZERO(&readfds);
+	FD_SET(signal_pipe[0], &readfds); 
 
   // TODO: Use select to check if there are new bytes 
   //   to be read from signal_pipe
-  if (select(FD_SETSIZE, &set, NULL, NULL, &tv)) { 
+  if (select(FD_SETSIZE, &readfds, NULL, NULL, &tv)) { 
     // Default return parameters
     *cmd = 0;
     *extra = 0;
@@ -281,16 +289,16 @@ int read_cmd(enum message *cmd, char *extra) {
       // TODO if buf matches "resume" set cmd to correct value
       // (use enum message in arduino.h) 
     	if (matches(buf, "resume")) {
-			*cmd = 4;
+			*cmd = RESUME;
 		}
       // TODO else if buf matches "pause" set cmd to correct valuet
 		else if (matches(buf, "pause")) {
-			*cmd = 3;
+			*cmd = PAUSE;
 		}
       // TODO else if buf matches "exit" set cmd to correct value
       	else if (matches(buf, "exit")) {
 			// its 5, arduinocomm.h
-			*cmd = 5;
+			*cmd = EXIT;
 		}
       // TODO else if buf matches "blink" a space and a number,
       //    set cmd to correct value and extra to the value
@@ -298,14 +306,13 @@ int read_cmd(enum message *cmd, char *extra) {
       //    to scan the %d into an integer, which you
       //    can convert to a char
 		else if (matches(buf, "blink %d")) {
-			*cmd = 1;
-			int blinkRate;
-			sscanf("%s %d", NULL, &blinkRate);
-			*extra = blinkRate;
+			*cmd = BLINK;
+			sscanf(buf, "%d", &_extra);
+			*extra = (char)_extra;
 		}
       // TODO else if buf matches "request" set cmd to correct value
 		else if (matches(buf, "request")) {
-			*cmd = 2;
+			*cmd = REQUEST;
 		}
 
       // reset buffer
@@ -379,19 +386,24 @@ void main_loop_data(int tty_fd, char *record, char **hists) {
     //       to Arduino and flip is_paused flag.
     //     TODO: if msg is Blink: send a 2-char array to Arduino
     //       with the msg and the extra
-	if(read_cmd(msg, extra)) { // we have a command
-		if(msg == 5) // exit
+	if(read_cmd(&msg, &extra)) { // we have a command
+		if(msg == EXIT) // exit
 			return;
-		else if(msg == 3) { // pause
-			send_msg(msg, 1, tty_fd);
-			is_paused = !is_paused;
-		}
-		else if(msg == 4) { // resume
-			send_msg(msg, 1, tty_fd);
-			is_paused = !is_paused;
-		}
-		else if(msg == 1) { // blink
+		else if(msg == PAUSE) { // pause
 			to_send[0] = msg;
+			//to_send[0] = 3;
+			send_msg(to_send, 2, tty_fd);
+			is_paused = !is_paused;
+		}
+		else if(msg == RESUME) { // resume
+			to_send[0] = msg;
+			//to_send[0] = '4';
+			send_msg(to_send, 2, tty_fd);
+			is_paused = !is_paused;
+		}
+		else if(msg == BLINK) { // blink
+			to_send[0] = msg;
+			//to_send[0] = '1';
 			to_send[1] = extra;
 			send_msg(to_send, 2, tty_fd);
 		}
@@ -407,7 +419,8 @@ void main_loop_data(int tty_fd, char *record, char **hists) {
       next_time = t + 1;
 
       // TODO: send a 1 (request command) to the Arduino
-		send_msg("1", 1, tty_fd);
+		to_send[0] = REQUEST;
+		send_msg(to_send, 2, tty_fd);
 
       /*
        * Format of reply as follows
@@ -451,9 +464,9 @@ void main_loop_data(int tty_fd, char *record, char **hists) {
       }
 
       // Debug print
-      // printf("\t Got: %03u, %03u, %03u, %03u, %.12s\n", (unsigned char)reply[0], 
-      // 	(unsigned char)reply[1], (unsigned char)reply[2], 
-      // 	(unsigned char)reply[3], reply + 4);
+      printf("\t Got: %03u, %03u, %03u, %03u, %.12s\n", (unsigned char)reply[0], 
+       	(unsigned char)reply[1], (unsigned char)reply[2], 
+       	(unsigned char)reply[3], reply + 4);
 
       num_readings++;
 
@@ -466,16 +479,20 @@ void main_loop_data(int tty_fd, char *record, char **hists) {
        update_hist(hists[i], reply[i], time);
 
       }
+	printf("PRE UPDATE RECORD\n");
       update_record(record, reply[0], reply[1], reply[2], reply[3], reply + 4);
 
       /*Now reply to client if the message was REQUEST*/
       // TODO: if msg was REQUEST, write the reply to the data_pipe
       //    and reset msg to 0
-
-		if(msg == 2) {
-			write(data_pipe[1], reply, 17);
+		printf("PRE DATA PIPE WRITE\n");
+		if(msg == REQUEST) {
+			printf("WRITING TO DATA PIPE\n");
+			write(data_pipe[1], reply, 16);
 			msg = 0;
 		}
+
+		printf("END OF LOOP\n");
 
     }
   }
