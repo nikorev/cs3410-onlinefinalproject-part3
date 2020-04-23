@@ -187,6 +187,7 @@ void main_loop_cli(char *record, char **hists) {
 	else if (matches(buf, "exit")) {
 		printf("[main_loop_cli] writing to signal_pipe: exit\n");
 		write(signal_pipe[1], "exit", strlen("exit") + 1);
+		return;
 	}    
     // TODO else if buf matches "blink" send buf to parent
     else if (matches(buf, "blink")) {
@@ -325,9 +326,8 @@ int read_cmd(enum message *cmd, char *extra) {
       //    can convert to a char
 
 		// substitute with SSCANF TODO
-		else if (matches(buf, "blink %d")) {
+		else if (sscanf(buf, "blink %d", &_extra) != '\0') {
 			*cmd = BLINK;
-			sscanf(buf, "%d", &_extra);
 			*extra = (char)_extra;
 		}
       // TODO else if buf matches "request" set cmd to correct value
