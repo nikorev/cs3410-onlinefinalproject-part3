@@ -50,6 +50,7 @@ int main(int argc, char **argv) {
     goto done;
   }
 
+
   /* Configure settings on the serial port */
   if (init_tty(serial_fd) == -1) {
     perror("Issue setting up serial file");
@@ -83,7 +84,8 @@ int main(int argc, char **argv) {
   if (construct_record("record.bin", &record_fd, &record)) {
     res = -1;
     goto done;
-  } 
+  }
+
 
   /* Create pipes for comm between parent and child
    * Signal pipe is used by the cli loop to ask for
@@ -93,13 +95,15 @@ int main(int argc, char **argv) {
   // TODO: init signal_pipe with error checking
 	if(pipe(signal_pipe) == -1) {
 		perror("pipe");
-		return -1;
+		res = -1;
+		goto done;
 	}
 
   // TODO: init data_pipe with error checking
 	if(pipe(data_pipe) == -1) {
 		perror("pipe");
-		return -1;
+		res = -1;
+		goto done;
 	} 
 
   printf("Initializing Host-side Processes\n");
@@ -112,13 +116,14 @@ int main(int argc, char **argv) {
 
 	if((pid = fork()) == -1) {
 		perror("fork");
-		exit(1);
+		res = -1;
+		goto done;
 	}
 
 	if(pid == 0) {
 		// CHILD
 		main_loop_cli(record, hists);
-		exit(0);
+		goto done;
 	}
 	else {
 		// PARENT
@@ -186,14 +191,27 @@ void main_loop_cli(char *record, char **hists) {
     // TODO else if buf matches "blink" send buf to parent
     else if (matches(buf, "blink")) {
 		printf("[main_loop_cli] writing to signal_pipe: blink\n");
-		write(signal_pipe[1], &buf, buffer_size);
+		write(signal_pipe[1], buf, strlen(buf));
 	}
 	// TODO else if buf matches "request" send "request" to parent
     //   Then: read 16 chars from data pipe and print to stdout
-	else if (matches(buf, "request")) {
+	else if (matches(buf, "env")) {
 		printf("[main_loop_cli] writing to signal_pipe: request\n");
 		write(signal_pipe[1], "request", strlen("request") + 1);
+		
+		/*      	
+		char reply[17];
+      	reply[16] = '\0';
+      	int consumed = 0;
+      	while (consumed < 16) {
+        	int res = read(data_pipe[0], reply + (consumed * sizeof(char)), 16 - consumed);
+			consumed += res;
+        } else {
+          perror("Issue reading from data pipe");
+          return;
+        } */
 		char recordBuf[17];
+		recordBuf[16] = '\0';
 		read(data_pipe[0], recordBuf, 16);
 		printf("%s\n", recordBuf);
 	}    
@@ -231,7 +249,7 @@ void main_loop_cli(char *record, char **hists) {
       printf("\tpause\n");
       printf("\tresume\n");
       printf("\tblink X\n");
-      printf("\trequest\n");
+      printf("\tenv\n");
       printf("\trecord\n");
       printf("\thist t\n");
       printf("\thist p\n");
@@ -305,6 +323,8 @@ int read_cmd(enum message *cmd, char *extra) {
       //  Tip: you can use sscanf buf to find "blink %d" 
       //    to scan the %d into an integer, which you
       //    can convert to a char
+
+		// substitute with SSCANF TODO
 		else if (matches(buf, "blink %d")) {
 			*cmd = BLINK;
 			sscanf(buf, "%d", &_extra);
@@ -464,9 +484,9 @@ void main_loop_data(int tty_fd, char *record, char **hists) {
       }
 
       // Debug print
-      printf("\t Got: %03u, %03u, %03u, %03u, %.12s\n", (unsigned char)reply[0], 
-       	(unsigned char)reply[1], (unsigned char)reply[2], 
-       	(unsigned char)reply[3], reply + 4);
+      //printf("\t Got: %03u, %03u, %03u, %03u, %.12s\n", (unsigned char)reply[0], 
+       	//(unsigned char)reply[1], (unsigned char)reply[2], 
+       	//(unsigned char)reply[3], reply + 4);
 
       num_readings++;
 
@@ -479,22 +499,16 @@ void main_loop_data(int tty_fd, char *record, char **hists) {
        update_hist(hists[i], reply[i], time);
 
       }
-	printf("PRE UPDATE RECORD\n");
       update_record(record, reply[0], reply[1], reply[2], reply[3], reply + 4);
-
       /*Now reply to client if the message was REQUEST*/
       // TODO: if msg was REQUEST, write the reply to the data_pipe
       //    and reset msg to 0
-		printf("PRE DATA PIPE WRITE\n");
 		if(msg == REQUEST) {
-			printf("WRITING TO DATA PIPE\n");
-			write(data_pipe[1], reply, 16);
-			msg = 0;
+			write(data_pipe[1], reply, 17);
+			msg = '0';
 		}
 
-		printf("END OF LOOP\n");
 
     }
   }
-  printf("DONE with parent LOOP\n");
 }

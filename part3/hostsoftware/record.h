@@ -1,7 +1,6 @@
 #ifndef record_h_
 #define record_h_
 
-// These defines set the sizes of the record file!!!
 #define RECORDLEN 36
 #define NUMRECORDS (24 * 3)
 #define RECORD_FILESIZE (NUMRECORDS * RECORDLEN)
@@ -21,93 +20,63 @@ int update_record(char *record, unsigned char tmp, unsigned char prs,
 
   /*
    *  Write out data in a CSV format
-   *  and counts the number of records archived
    */
-
-  //TODO: your code here
-	// CSV means comma separated values, same format in host.c
-	sprintf(record, "%d,%d,%d,%d,%s", tmp, prs, hmd, rained, timeString);
-
-	// TODO RECORD IS NULL, MALLOC HERE OR THERE?
-		// testing there
-	_records_so_far++;
-
-
+  sprintf(record + (_records_so_far * RECORDLEN * sizeof(char)),
+          "  %03u, %03u, %03u, %03u, %.12s,\n", tmp, prs, hmd, rained,
+          timeString);
+  _records_so_far++;
   return 0;
 }
 
 /*
  * construct_record is responsible for opening the file and mmaping the file
- * the file descriptor (fd) is loaded into user provided pointer
- * the address of the mapped region (buffer) is loaded into another user provided
+ * the file descriptor is loaded into user provided pointer
+ * the address of the mapped region is loaded into another user provided
  * pointer return value is 0 on success
  */
 int construct_record(char *record_fname, int *fd, char **buffer) {
   _records_so_far = 0;
   /*
    * Open a file for reading and writing with permission granted to user
-   * Use error checking!
    */
-  
-  //TODO: your code here
-	int fdtemp = open(record_fname, O_CREAT | O_RDWR, (mode_t)0777);
-
-	if(fdtemp == -1)
-		return -1;
-
-	*fd = fdtemp;
-
+  *fd = open(record_fname, O_CREAT | O_RDWR | O_TRUNC, (mode_t)0600);
+  if (*fd < 0) {
+    perror("issue opening");
+    return -1;
+  }
 
   /*
    * Seek to the end of the file and write a \0 to extend the file
-   * Use error checking!
    */
-  
-  //TODO: your code here
-	off_t offset = lseek(*fd, RECORD_FILESIZE, SEEK_SET);
-
-	if(offset == -1) {
-		close(*fd);
-		return -1;
-	}
-
-	if(write(*fd, "", 1) == -1) {
-		close(*fd);
-		return -1;
-	}
-
+  if (-1 == lseek(*fd, RECORD_FILESIZE, SEEK_SET)) {
+    perror("issue with lseek");
+    return -1;
+  }
+  int result = write(*fd, "", 1);
+  if (result != 1) {
+    perror("issue extending file");
+    return -1;
+  }
 
   /*
-   * Map the proper region of the file into the user's address space
-   * Use error checking!
+   * Map the proper region of the file into the user's address apce
    */
-  
-  //TODO: your code here
-
-	buffer = mmap(0, RECORD_FILESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, *fd, 0);
-
-	if(buffer == MAP_FAILED) {
-		close(*fd);
-		return -1;
-	}
-
+  *buffer = (char *)mmap(0, RECORD_FILESIZE, PROT_READ | PROT_WRITE, MAP_SHARED,
+                         *fd, 0);
+  if (*buffer == MAP_FAILED) {
+    perror("Issue mmapping record file");
+    return -1;
+  }
+  memset(*buffer, ' ', RECORD_FILESIZE);
   return 0;
 }
 
 int deconstruct_record(int record_fd, char *record) {
   /*
    * No need to sync the file, unless there are multiple reading processes
-   * so simply un-map and close
    */
-  
-  //TODO: your code here
-	if(munmap(&record_fd, strlen(record)) == -1) {
-		close(record_fd);
-		return -1;
-	}
-
-	close(record_fd);
-
+  munmap(record, RECORD_FILESIZE);
+  close(record_fd);
   return 0;
 }
 
