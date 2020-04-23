@@ -199,22 +199,31 @@ void main_loop_cli(char *record, char **hists) {
 	else if (matches(buf, "env")) {
 		printf("[main_loop_cli] writing to signal_pipe: request\n");
 		write(signal_pipe[1], "request", strlen("request") + 1);
-		
-		/*      	
+      	sleep(1); // give time for parent to process
+		// Read the reply
 		char reply[17];
       	reply[16] = '\0';
-      	int consumed = 0;
+      	/*int consumed = 0;
       	while (consumed < 16) {
         	int res = read(data_pipe[0], reply + (consumed * sizeof(char)), 16 - consumed);
-			consumed += res;
-        } else {
-          perror("Issue reading from data pipe");
-          return;
-        } */
-		char recordBuf[17];
-		recordBuf[16] = '\0';
-		read(data_pipe[0], recordBuf, 16);
-		printf("%s\n", recordBuf);
+        	if (res >= 0) {
+          		consumed += res;
+        	} else {
+          		perror("Issue reading from serial");
+          	return;
+        	}
+      	}*/
+		read(data_pipe[0], reply, 17);
+	
+		// From piazza post @219, fixed garbage output
+		// convert reply[0] - reply[3] to unsigned char
+		// temp, pressure, humity, rain
+		unsigned char tmp = (unsigned char)reply[0];
+		unsigned char prs = (unsigned char)reply[1];
+		unsigned char hum = (unsigned char)reply[2];
+		unsigned char rai = (unsigned char)reply[3];
+	
+		printf("%u, %u, %u, %u, %s\n", tmp, prs, hum, rai, reply + 4);
 	}    
     // TODO else if buf matches "hist t", print temp  histogram
 	else if (matches(buf, "hist t")) {    
